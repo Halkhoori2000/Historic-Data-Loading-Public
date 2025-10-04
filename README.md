@@ -1,5 +1,5 @@
 # Historic-Data-Loading
-After finalizing the files in drive will be brought here in github
+After finalizing the files in Drive, they will be uploaded here to GitHub
 https://drive.google.com/drive/folders/1mJMsZzmN_GqKbZmuc5VbsQQD-2aAVW9Y?usp=drive_link
 
 
