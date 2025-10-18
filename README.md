@@ -25,4 +25,4 @@ Steps to extend the solution for new systems or columns.
 Troubleshooting and error resolution guide.
 
 
-Handover training session(s) for internal team members.
+Guide and Manual
