@@ -20,7 +20,7 @@ Pipeline logic, schema drift framework, data dictionary usage.
 Steps to extend the solution for new systems or columns.
 Troubleshooting and error resolution guide.
 
-create something similar to this
+create something similar to this or any other project that is placed on github
 https://github.com/ak7ra/frog_classification
 
 
