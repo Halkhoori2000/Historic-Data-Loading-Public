@@ -1,4 +1,6 @@
 # ETL-Framework for Manual Files
+This is a public showcase of Historic Data Loading. The full project us maintained in a private repository.
+
 Purpose:
 Maximizing shareholders' returns by leveraging on data and building the foundation to have an efficent access to data
 ??create a figure here describing the below
