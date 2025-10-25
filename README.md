@@ -1,8 +1,30 @@
 # ETL-Framework for Manual Files
-This is a public showcase of Historic Data Loading. The full project is maintained in a private repository.
+This repository is a public showcase of our Historic Data Loading Framework.
+The full production project is maintained in a private repository.
 
-Purpose:
-Maximizing shareholders' returns by leveraging on data and building the foundation to have an efficent access to data
+# Purpose
+The goal of this framework is to:
+Build a strong data foundation for reporting and analytics.
+Enable efficient, governed, and reliable access to data.
+Maximize shareholder value by leveraging data to support decision-making.
+
+# Data Flow
+```mermaid
+flowchart LR
+    A["Sources (Systems / Manual Files)"] --> B["Ingest (Confluent CDC / ADF Batch)"]
+    B --> C["ADLS Bronze"]
+    C --> D["Transform (Spark / ADF) Silver"]
+    D --> E["Lakehouse & Warehouse Gold"]
+    E --> F["Semantic Reporting Layer"]
+    F --> G["Reporting Tools (SQL, BI)"]
+```
+
+
+
+
+
+
+
 ??create a figure here describing the below
 Sources (Systems or Manual files)->Ingest (Confluent CDC/ADF Batch)->ADLS bronze->Transform(Spark/ADF) silver->Lakehouse & Warehouse Gold-> sematic reporting layer->reporting tools like sql, bi
 ??explain the figure
