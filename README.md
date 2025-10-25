@@ -7,6 +7,21 @@ Build a strong data foundation for reporting and analytics.
 Enable efficient, governed, and reliable access to data.
 Maximize shareholder value by leveraging data to support decision-making.
 
+
+```??this is to be done
+i have given some context but need it to be connected together and better made.
+ure expected to show the whole high level overview of the project.
+Bronzelayer: datamapping, etlprocceses,data laoding,dq rules, technical metadata
+silverlayer: silver data model review, dilver data mapping, ldm to pdm implementation, etl processes, data catalogue
+goldlayer: buisness metadata, plan data mart
+
+source systems can be either ingested using streaming or batch and the goes theough bronze then silver then gold. after we have the semantic layer then into reporting tools
+the manual file techincally go through bronze and silver but since the use case is just for buisess we just transofrm and upload to gold layer but then we have semantic layer and then reporting tools like bi,
+
+explain the etl framerok. extract using CDC trigger and batch schedule->raw data staging->clean->transform->Load->precommit staging->data target
+
+
+```
 # Data Flow
 ```mermaid
 flowchart LR
