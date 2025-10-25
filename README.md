@@ -1,6 +1,5 @@
 # ETL-Framework for Manual Files
-This repository is a public showcase of our Historic Data Loading Framework.
-The full production project is maintained in a private repository.
+Production code lives in a private repository. This repo showcases the design, standards, and runnable examples for our Historic Data Loading Framework.
 
 # Purpose
 The goal of this framework is to:
@@ -11,33 +10,137 @@ Maximize shareholder value by leveraging data to support decision-making.
 # Data Flow
 ```mermaid
 flowchart LR
-    A["Sources (Systems / Manual Files)"] --> B["Ingest (Confluent CDC / ADF Batch)"]
-    B --> C["ADLS Bronze"]
-    C --> D["Transform (Spark / ADF) Silver"]
-    D --> E["Lakehouse & Warehouse Gold"]
-    E --> F["Semantic Reporting Layer"]
-    F --> G["Reporting Tools (SQL, BI)"]
+  %% Groups
+  subgraph SRC[Sources]
+    direction TB
+    SYS[🖥️ Systems]
+    MF[📄 Manual Files]
+  end
+
+  subgraph ING[Ingest]
+    direction TB
+    CDC[🔁 Confluent CDC]
+    ADFI[🧭 ADF Batch]
+  end
+
+  subgraph LAKE[ADLS + Lakehouse Layers]
+    direction LR
+    BRZ[🥉 Bronze\nRaw & Immutable]
+    SIL[🥈 Silver\nCleansed & Modeled]
+    GLD[🥇 Gold\nCurated & Semantic]
+  end
+
+  subgraph CONS[Consumption]
+    direction TB
+    SL[🧠 Semantic Layer]
+    BI[📊 SQL / BI Tools]
+  end
+
+  %% Flow
+  SYS --> CDC --> BRZ
+  SYS --> ADFI --> BRZ
+  MF --> ADFI --> BRZ
+  BRZ -->|Spark / ADF Transform| SIL --> GLD --> SL --> BI
+
+  %% Styles
+  classDef src fill:#eef6ff,stroke:#2b6cb0,color:#1a365d
+  classDef ing fill:#fff7ed,stroke:#9a3412,color:#7c2d12
+  classDef bronze fill:#f3f4f6,stroke:#4b5563,color:#1f2937
+  classDef silver fill:#f8fafc,stroke:#334155,color:#0f172a
+  classDef gold fill:#fffbeb,stroke:#92400e,color:#78350f
+  classDef sem fill:#ecfeff,stroke:#155e75,color:#0c4a6e
+  classDef bi fill:#f0fdf4,stroke:#166534,color:#14532d
+
+  class SYS,MF src
+  class CDC,ADFI ing
+  class BRZ bronze
+  class SIL silver
+  class GLD gold
+  class SL sem
+  class BI bi
+
+```
+Bronze: Raw data ingested with little/no transformation; immutable “system of record.” Used to establish initial data mappings. ETL here is load-only (schema-on-write minimal).
+
+Silver: Data is cleaned, standardized, and conformed. We implement Logical Data Model (LDM) and Physical Data Model (PDM) and create/maintain the silver data mapping.
+
+Gold: Curated, business-ready datasets enriched with business metadata, optimized for consumption (semantic models, data marts, KPI tables).
+
+```mermaid
+flowchart TB
+  subgraph EX[Extract]
+    direction TB
+    E1[Triggers and Schedulers]
+    E2[Adapters and Connectors - DB API Files Manual]
+    E3[Staging and Standardization]
+    E4[Monitoring and Alerts]
+  end
+
+  subgraph CL[Clean]
+    direction TB
+    C1[Parsing and Type Coercion]
+    C2[Standardization - code sets units timezones]
+    C3[Deduplication and Consolidation]
+    C4[Data Quality Rules]
+    C5[Rejects and Quarantine]
+  end
+
+  subgraph TR[Transform]
+    direction TB
+    T1[Source specific transformations]
+    T2[Common transformations]
+    T3[Aggregations]
+    T4[Surrogate Keying]
+    T5[SCD Handling]
+  end
+
+  subgraph LD[Load]
+    direction TB
+    L1[Dimension Loads]
+    L2[Fact Loads - multi grain]
+    L3[OLAP Aggregates]
+    L4[Incremental and MERGE]
+  end
+
+  subgraph MD[Metadata and Governance]
+    direction TB
+    M1[Technical Metadata - schemas datatypes]
+    M2[Business Metadata - definitions lineage]
+    M3[Central Glossary and Data Catalog]
+  end
+
+  subgraph SVCS[Platform Services]
+    direction TB
+    S1[Batch Scheduling and Orchestration]
+    S2[Configuration and Parameter Store]
+    S3[Logging and Auditing]
+    S4[Archival and Purge]
+    S5[Exception Handling and Retry]
+    S6[Version Control and CI CD]
+    S7[File Transfer and Secrets Management]
+  end
+
+  EX --> CL --> TR --> LD
+  LD --> MD
+  LD --> SVCS
+  MD --> SVCS
+
 ```
 
+Extract from DBs, APIs, flat/XML/Excel/manual files via triggers/schedules and connectors; land into a standardized staging zone with monitoring.
 
+Clean by parsing, standardizing, deduplicating, consolidating, and applying DQ rules; quarantine rejects.
 
+Transform with reusable patterns, aggregations, surrogate keys, and SCD logic.
 
+Load into target models (dimensions/facts, multi-grain facts, aggregates) using incremental strategies.
 
+Metadata (technical + business) and platform services (orchestration, logging, config, governance) ensure reliability and traceability.
 
-
-??create a figure here describing the below
-Sources (Systems or Manual files)->Ingest (Confluent CDC/ADF Batch)->ADLS bronze->Transform(Spark/ADF) silver->Lakehouse & Warehouse Gold-> sematic reporting layer->reporting tools like sql, bi
-??explain the figure
-bronze is where raw data is loaded into and will help us create an inital data mapping. usually the only etl here is loading. in the silver we extract from the bronze and transform. in addition a silver data mapping is created. we also implement LDM and PDM. finally in the gold layer we have the buisness metadata and plan a data mart
-Bronze: Raw data is ingested from source systems with little or no transformation. It serves as the immutable system of record.
-Silver: Data is cleaned, standardized, and transformed into a consistent structure. Here we implement logical and physical data models to align data across domains.
-Gold: Curated data is enriched with business metadata and optimized for consumption (e.g., data marts, semantic layers, reports).
-??create a diagram of ETL 
-??description for ETL
 This ETL framework diagram illustrates the complete flow of how data moves from its sources into the final target system while being managed, cleaned, and transformed along the way. The process begins with extracting data from multiple sources such as relational databases, XML files, flat files, or even manual entry. Extraction is managed by triggers, schedulers, adapters, and monitoring tools, with all raw data first staged and standardized for consistency. Once extracted, the data undergoes a cleaning process where it is parsed, corrected, standardized, deduplicated, consolidated, and quality-checked to ensure reliability. After cleaning, the transformation phase applies both source-specific and common transformations, performs aggregations, and replaces natural keys with surrogate keys for consistency in the data warehouse. Following transformation, the load phase populates the target system using various strategies, including building aggregates for OLAP analysis, handling slowly changing dimensions, and supporting multi-grained fact tables. Throughout this process, metadata management plays a key role, maintaining both technical metadata (schemas, data types) and business metadata (definitions, meaning) within a central repository. To support the ETL process, additional services handle rejected data, batch scheduling, configuration, logging, auditing, archiving, exception handling, parameterization, file transfer, version control, monitoring, and data purging. Together, these components ensure that data is moved from raw sources into a clean, consistent, and well-managed target system, ready for business use and analysis.
 
 ??complete the below
-Documentation, setup, manual
+Documentation, setup, manual, test files and so on
 
 Developer and user documentation covering: maybe this is in the report
 Pipeline logic, schema drift framework, data dictionary usage.
