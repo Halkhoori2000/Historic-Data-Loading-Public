@@ -1,5 +1,3 @@
-# HDLP
-
 > Production code lives in a private repository. This repo showcases the **architecture**, **design standards**, **documentation**, and **runnable examples** behind the **Historic Data Loading Framework** used for ingesting historic and manually managed files into a governed analytics platform.
 
 ---
