@@ -180,7 +180,7 @@
   <section id="ch1">
     <div class="ch-label">Chapter 1</div>
     <h3>The problem: nobody could use the history</h3>
-    <p class="prose">Eight core banking systems had been exporting monthly position files for years, under changing conventions. The history existed, but it was unusable: filenames encoded dates seven different ways, column names changed between months, headers hid under title rows, and a few files wouldn't even open. Risk and reporting work needed that history <strong>in the lakehouse, conformed and trustworthy</strong>.</p>
+    <p class="prose">Eight core banking systems had been exporting monthly position files for years, under changing conventions. The history existed, but it was unusable: filenames encoded dates seven different ways, column names changed between months, headers hid under title rows, and a few files wouldn't even open. The sharpest constraint was simpler still: <strong>the business could only ever look at one month at a time</strong> — each file a frozen snapshot, any question across time unanswerable. Risk and reporting work needed that history <strong>in the lakehouse, conformed and trustworthy</strong>.</p>
     <div class="stat-grid">
       <div class="stat-card blue"><div class="val" id="s-files">—</div><div class="lbl">Excel files</div></div>
       <div class="stat-card blue"><div class="val" id="s-sheets">—</div><div class="lbl">data sheets</div></div>
@@ -329,6 +329,7 @@
           <li><strong>4 · Trigger</strong> — run the loader job (or wait for the schedule)</li>
           <li><strong>5 · Verify</strong> — compare source row count vs table row count, spot-check values</li>
           <li>The file had to <strong>fit the loader</strong>: header in the first row, nothing above it, unique clean names. Fine for a handful of loads — <strong>× 535 sheets it doesn't scale</strong></li>
+          <li><em>What the business got:</em> queryable tables at last — but <strong>one per file</strong>, the history still fragmented month by month</li>
         </ul>
       </div>
       <div class="vbox v2"><h4>Final solution — the loader fits the files</h4>
@@ -338,6 +339,7 @@
           <li><strong>Control rows generated automatically</strong> from that metadata — no hand-written INSERTs</li>
           <li><strong>Column matrix</strong> exposes drift and collects the business mapping (chapter 4)</li>
           <li>Files load <strong>as they are</strong> — batches roll system by system, year by year</li>
+          <li><em>What the business got:</em> <strong>one conformed table per system</strong> — the entire multi-year history, open to any question</li>
         </ul>
       </div>
     </div>
@@ -377,7 +379,7 @@
       <div class="card"><div class="icon">🛡️</div><h4>Enforced standards</h4><p>SQL validation rules and automated checks guard the layers; anomalies are logged, never silently fixed.</p></div>
       <div class="card"><div class="icon">🤝</div><h4>A process that transfers</h4><p>Runbook, guides, and review cadence handed over — the stakeholder loop keeps working without its author.</p></div>
     </div>
-    <p class="prose">The lasting result isn't the loaded history — it's that <strong>the next 535 sheets won't be a project</strong>. The framework, the dictionary, and the stakeholder process turned a one-off rescue into a repeatable capability.</p>
+    <p class="prose">Put simply: the business went from <strong>opening one month's file at a time</strong>, to per-file tables, to <strong>querying the entire multi-year history in one conformed table per system</strong> — trends, comparisons, and analyses that were previously impossible are now a SQL query. And the lasting result isn't just the loaded history — it's that <strong>the next 535 sheets won't be a project</strong>. The framework, the dictionary, and the stakeholder process turned a one-off rescue into a repeatable capability.</p>
   </section>
 
 </main>
