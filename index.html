@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Historic Data Loading — an end-to-end delivery case study</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0d1117; color: #e6edf3; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.7; }
+    a { color: #58a6ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    header { background: #161b22; border-bottom: 1px solid #30363d; padding: 24px 32px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+    header h1 { font-size: 1.4rem; font-weight: 600; }
+    header .subtitle { font-size: 0.85rem; color: #8b949e; margin-top: 2px; }
+    .header-links { display: flex; gap: 12px; }
+    .btn { display: inline-block; padding: 8px 18px; border-radius: 6px; font-size: 0.9rem; font-weight: 500; border: 1px solid #30363d; background: #21262d; color: #e6edf3; cursor: pointer; font-family: inherit; }
+    .btn:hover { opacity: 0.85; text-decoration: none; }
+    .btn-primary { background: #1f6feb; border-color: #1f6feb; color: #fff; }
+    .btn:disabled { opacity: 0.45; cursor: default; }
+    main { max-width: 1100px; margin: 0 auto; padding: 48px 24px; }
+    .hero { text-align: center; margin-bottom: 40px; }
+    .hero h2 { font-size: 2.1rem; font-weight: 700; margin-bottom: 12px; }
+    .hero p { font-size: 1.05rem; color: #8b949e; max-width: 760px; margin: 0 auto 24px; }
+    .badge-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+    .badge { background: #161b22; border: 1px solid #30363d; border-radius: 20px; padding: 4px 12px; font-size: 0.78rem; color: #8b949e; }
+    .stat-highlight { display: inline-block; background: #0d419d; border: 1px solid #1f6feb; border-radius: 20px; padding: 4px 14px; font-size: 0.82rem; color: #79c0ff; font-weight: 600; }
+    .synthetic-note { background: rgba(210,168,255,0.07); border: 1px solid #8957e5; border-radius: 8px; padding: 14px 20px; font-size: 0.85rem; color: #d2a8ff; max-width: 860px; margin: 0 auto 40px; text-align: center; }
+    .chapter-nav { position: sticky; top: 0; z-index: 50; background: rgba(13,17,23,0.95); backdrop-filter: blur(4px); border-bottom: 1px solid #21262d; padding: 10px 8px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-bottom: 48px; }
+    .chapter-nav a { font-size: 0.78rem; color: #8b949e; padding: 4px 10px; border-radius: 14px; border: 1px solid transparent; white-space: nowrap; }
+    .chapter-nav a:hover { color: #e6edf3; border-color: #30363d; text-decoration: none; }
+    section { margin-bottom: 72px; scroll-margin-top: 64px; }
+    .ch-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; color: #f0883e; text-transform: uppercase; margin-bottom: 6px; }
+    section > h3 { font-size: 1.45rem; font-weight: 700; margin-bottom: 18px; padding-bottom: 10px; border-bottom: 1px solid #21262d; }
+    .prose { color: #b8c2cc; font-size: 0.95rem; max-width: 860px; margin-bottom: 20px; }
+    .prose strong { color: #e6edf3; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin: 20px 0; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 18px 20px; }
+    .card .icon { font-size: 1.3rem; margin-bottom: 8px; }
+    .card h4 { font-size: 0.92rem; font-weight: 600; margin-bottom: 6px; }
+    .card p { font-size: 0.83rem; color: #8b949e; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin: 20px 0; }
+    .stat-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 18px; text-align: center; }
+    .stat-card .val { font-size: 1.7rem; font-weight: 700; color: #3fb950; font-family: 'SF Mono', 'Fira Code', monospace; }
+    .stat-card .lbl { font-size: 0.8rem; color: #8b949e; margin-top: 4px; }
+    .stat-card.blue .val { color: #79c0ff; }
+    .stat-card.orange .val { color: #f0883e; }
+    .demo { background: #161b22; border: 1px solid #1f6feb; border-radius: 10px; padding: 22px 24px; margin: 26px 0; }
+    .demo-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+    .demo-head h4 { font-size: 1rem; font-weight: 600; }
+    .demo-head .tag { background: #0d419d; color: #79c0ff; border-radius: 12px; font-size: 0.7rem; font-weight: 700; padding: 2px 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+    .demo-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    select { background: #0d1117; color: #e6edf3; border: 1px solid #30363d; border-radius: 6px; padding: 7px 10px; font-size: 0.85rem; font-family: inherit; }
+    .mono { font-family: 'SF Mono', 'Fira Code', monospace; }
+    .ticker { background: #0d1117; border: 1px solid #21262d; border-radius: 6px; padding: 10px 14px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.78rem; color: #8b949e; min-height: 42px; margin: 12px 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .ticker .ok { color: #3fb950; }
+    .ticker .warn { color: #f0883e; }
+    .counter-row { display: flex; gap: 22px; flex-wrap: wrap; margin: 14px 0; }
+    .counter { text-align: center; }
+    .counter .val { font-size: 1.35rem; font-weight: 700; color: #79c0ff; font-family: 'SF Mono', monospace; }
+    .counter .lbl { font-size: 0.72rem; color: #8b949e; }
+    .sysbars { display: grid; gap: 7px; margin: 14px 0; }
+    .sysbar { display: grid; grid-template-columns: 120px 1fr 90px; gap: 10px; align-items: center; font-size: 0.78rem; }
+    .sysbar .nm { color: #8b949e; text-align: right; font-family: 'SF Mono', monospace; }
+    .sysbar .track { background: #0d1117; border: 1px solid #21262d; border-radius: 4px; height: 14px; overflow: hidden; }
+    .sysbar .fill { background: linear-gradient(90deg,#1f6feb,#79c0ff); height: 100%; width: 0%; transition: width 0.25s; }
+    .sysbar .ct { color: #8b949e; font-family: 'SF Mono', monospace; }
+    .grid-wrap { overflow: auto; max-height: 420px; border: 1px solid #21262d; border-radius: 6px; margin: 14px 0; }
+    table.sheet { border-collapse: collapse; font-size: 0.72rem; font-family: 'SF Mono', 'Fira Code', monospace; }
+    table.sheet td, table.sheet th { border: 1px solid #21262d; padding: 4px 9px; white-space: nowrap; color: #b8c2cc; }
+    table.sheet tr.scanning { outline: 2px solid #f0883e; }
+    table.sheet tr.rejected td { color: #484f58; }
+    table.sheet tr.winner { outline: 2px solid #3fb950; }
+    table.sheet tr.winner td { background: rgba(63,185,80,0.12); color: #3fb950; font-weight: 700; }
+    .rowlog { font-size: 0.76rem; font-family: 'SF Mono', monospace; color: #8b949e; margin: 10px 0; max-height: 180px; overflow: auto; background: #0d1117; border: 1px solid #21262d; border-radius: 6px; padding: 10px 14px; }
+    .rowlog .good { color: #3fb950; }
+    .rowlog .bad { color: #f85149; }
+    .rowlog .info { color: #79c0ff; }
+    .matrix-wrap { overflow: auto; max-height: 480px; border: 1px solid #21262d; border-radius: 6px; margin: 14px 0; }
+    table.matrix { border-collapse: collapse; font-size: 0.68rem; font-family: 'SF Mono', monospace; }
+    table.matrix th { background: #21262d; color: #8b949e; padding: 4px 6px; border: 1px solid #30363d; position: sticky; top: 0; white-space: nowrap; }
+    table.matrix td { border: 1px solid #1c2128; padding: 3px 6px; text-align: center; white-space: nowrap; }
+    table.matrix td.colname { text-align: left; color: #b8c2cc; position: sticky; left: 0; background: #161b22; max-width: 210px; overflow: hidden; text-overflow: ellipsis; }
+    table.matrix td.on { background: rgba(31,111,235,0.35); }
+    table.matrix td.newcol { background: rgba(63,185,80,0.45); }
+    table.matrix td.count { color: #f0883e; font-weight: 700; }
+    table.matrix td.dict { color: #d2a8ff; text-align: left; }
+    .era-strip { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 14px 0; font-family: 'SF Mono', monospace; font-size: 0.8rem; }
+    .era-chip { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 6px 12px; color: #b8c2cc; }
+    .era-arrow { color: #f0883e; }
+    .funnel { display: grid; gap: 10px; margin: 18px 0; }
+    .fstage { display: grid; grid-template-columns: 190px 1fr 170px; gap: 14px; align-items: center; }
+    .fstage .nm { font-size: 0.82rem; color: #b8c2cc; text-align: right; }
+    .fstage .track { background: #0d1117; border: 1px solid #21262d; border-radius: 5px; height: 22px; overflow: hidden; }
+    .fstage .fill { height: 100%; width: 0%; transition: width 0.5s; background: linear-gradient(90deg,#1f6feb,#3fb950); }
+    .fstage.waiting .fill { background: #21262d; }
+    .fstage .out { font-size: 0.74rem; color: #8b949e; font-family: 'SF Mono', monospace; }
+    .fstage .out .em { color: #3fb950; font-weight: 700; }
+    .arch { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; margin: 20px 0; }
+    .arch .abox { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 10px 14px; font-size: 0.78rem; color: #b8c2cc; flex: 1 1 150px; min-width: 150px; }
+    .arch .abox b { display: block; color: #e6edf3; font-size: 0.8rem; margin-bottom: 3px; }
+    .arch .abox.gold { border-color: #d4a72c; } .arch .abox.gold b { color: #eac54f; }
+    .arch .abox.ctl { border-color: #1f6feb; } .arch .abox.ctl b { color: #79c0ff; }
+    .arch .aarr { align-self: center; color: #f0883e; font-size: 1.1rem; flex: 0 0 auto; }
+    .vs { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin: 20px 0; }
+    .vs .vbox { border-radius: 10px; padding: 18px 20px; border: 1px solid #30363d; background: #161b22; }
+    .vs .vbox h4 { font-size: 0.95rem; margin-bottom: 10px; }
+    .vs .vbox.v1 h4 { color: #f0883e; } .vs .vbox.v2 { border-color: #3fb950; } .vs .vbox.v2 h4 { color: #3fb950; }
+    .vs .vbox ul { margin: 0 0 0 18px; font-size: 0.83rem; color: #8b949e; display: grid; gap: 6px; }
+    .medallion { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 20px 0; }
+    .med { border-radius: 10px; padding: 18px 20px; border: 1px solid #30363d; background: #161b22; }
+    .med h4 { font-size: 0.95rem; margin-bottom: 6px; }
+    .med p { font-size: 0.8rem; color: #8b949e; }
+    .med.bronze { border-color: #b0762a; } .med.bronze h4 { color: #e3a95c; }
+    .med.silver { border-color: #7d8590; } .med.silver h4 { color: #c9d1d9; }
+    .med.gold { border-color: #d4a72c; } .med.gold h4 { color: #eac54f; }
+    .timeline { border-left: 2px solid #30363d; margin: 20px 0 20px 8px; padding-left: 22px; display: grid; gap: 16px; }
+    .tl-item { position: relative; }
+    .tl-item::before { content: ""; position: absolute; left: -28px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: #1f6feb; }
+    .tl-item h5 { font-size: 0.9rem; color: #e6edf3; }
+    .tl-item .when { font-size: 0.74rem; color: #f0883e; font-family: 'SF Mono', monospace; }
+    .tl-item p { font-size: 0.82rem; color: #8b949e; }
+    .filelist { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.76rem; background: #0d1117; border: 1px solid #21262d; border-radius: 8px; padding: 14px 18px; color: #8b949e; overflow-x: auto; }
+    .filelist .dir { color: #79c0ff; }
+    .dict-wrap { overflow: auto; max-height: 380px; border: 1px solid #21262d; border-radius: 6px; margin: 14px 0; }
+    table.dict { border-collapse: collapse; font-size: 0.75rem; width: 100%; }
+    table.dict th { background: #21262d; color: #8b949e; padding: 6px 10px; border: 1px solid #30363d; position: sticky; top: 0; text-align: left; }
+    table.dict td { border: 1px solid #1c2128; padding: 5px 10px; color: #b8c2cc; }
+    table.dict td.canon { font-family: 'SF Mono', monospace; color: #79c0ff; }
+    table.dict td.req { text-align: center; color: #3fb950; }
+    table.dict td.vars { font-family: 'SF Mono', monospace; font-size: 0.7rem; color: #8b949e; }
+    .quote { border-left: 3px solid #8957e5; background: rgba(137,87,229,0.06); border-radius: 0 8px 8px 0; padding: 14px 20px; font-size: 0.88rem; color: #b8c2cc; margin: 18px 0; max-width: 860px; font-style: italic; }
+    footer { text-align: center; padding: 32px; border-top: 1px solid #21262d; color: #484f58; font-size: 0.85rem; }
+    @media (max-width: 700px) { .fstage { grid-template-columns: 110px 1fr; } .fstage .out { grid-column: 1 / -1; text-align: right; } .sysbar { grid-template-columns: 84px 1fr 70px; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Historic Data Loading</h1>
+    <div class="subtitle">An end-to-end data delivery, shown as it actually happened — discovery → proposal → stakeholder loops → ingestion</div>
+  </div>
+  <div class="header-links">
+    <a class="btn" href="https://github.com/Halkhoori2000/Historic-Data-Loading" target="_blank">GitHub</a>
+  </div>
+</header>
+
+<nav class="chapter-nav">
+  <a href="#ch1">1 · The problem</a>
+  <a href="#ch2">2 · Discovery</a>
+  <a href="#ch3">3 · The proposal</a>
+  <a href="#ch4">4 · Stakeholder loops</a>
+  <a href="#ch5">5 · Unify &amp; ingest</a>
+  <a href="#ch6">6 · Outcome</a>
+</nav>
+
+<main>
+
+  <div class="hero">
+    <h2>535 messy Excel sheets → one governed lakehouse</h2>
+    <p>Years of monthly Excel exports from 8 core banking systems — inconsistent names, drifting schemas, buried headers, corrupt files — turned into a governed Delta lakehouse with a ~2-hour automated pipeline. This page walks through the delivery the way it really ran: not just the code, but the proposals, the stakeholder loops, and the guides that made the data trustworthy.</p>
+    <div class="badge-row">
+      <span class="badge">Databricks</span>
+      <span class="badge">PySpark</span>
+      <span class="badge">Azure Data Lake</span>
+      <span class="badge">Delta Lake</span>
+      <span class="badge">Medallion Architecture</span>
+      <span class="stat-highlight">8 systems</span>
+      <span class="stat-highlight">535 sheets</span>
+      <span class="stat-highlight">41+ GB</span>
+      <span class="stat-highlight">~2-hour run</span>
+    </div>
+  </div>
+
+  <div class="synthetic-note">
+    🔒 <strong>Every number, account, and file on this page is synthetic.</strong> The demos below run on a generated sample universe that mirrors the shape of the problem — same 8 systems, same 535-sheet scale, same messiness — built by <a href="https://github.com/Halkhoori2000/Historic-Data-Loading/blob/main/tools/generate_sample_data.py" target="_blank">an open generator script</a>. The pipeline behaviour is faithfully recreated.
+  </div>
+
+  <!-- ═══════════════ CHAPTER 1 ═══════════════ -->
+  <section id="ch1">
+    <div class="ch-label">Chapter 1</div>
+    <h3>The problem: nobody could use the history</h3>
+    <p class="prose">Eight core banking systems had been exporting monthly position files for years, under changing conventions. The history existed, but it was unusable: filenames encoded dates seven different ways, column names changed between months, headers hid under title rows, and a few files wouldn't even open. Risk and reporting work needed that history <strong>in the lakehouse, conformed and trustworthy</strong>.</p>
+    <div class="stat-grid">
+      <div class="stat-card blue"><div class="val" id="s-files">—</div><div class="lbl">Excel files</div></div>
+      <div class="stat-card blue"><div class="val" id="s-sheets">—</div><div class="lbl">data sheets</div></div>
+      <div class="stat-card orange"><div class="val">7+</div><div class="lbl">filename date formats</div></div>
+      <div class="stat-card orange"><div class="val" id="s-corrupt">—</div><div class="lbl">corrupt files</div></div>
+    </div>
+    <p class="prose">A glimpse of the raw landscape (from the sample universe):</p>
+    <div class="filelist" id="chaos-list">loading…</div>
+    <div class="cards">
+      <div class="card"><div class="icon">📅</div><h4>Estimated vs. real</h4><p>The initial plan assumed ~30&nbsp;GB and a few dozen tables. Discovery found <strong>41+&nbsp;GB across 535 sheets</strong> — the first lesson: measure before you promise.</p></div>
+      <div class="card"><div class="icon">🧩</div><h4>Schema drift</h4><p>The same field appears as <span class="mono">A/C No</span>, <span class="mono">ACCOUNT_NO</span>, and <span class="mono">Account Number</span> depending on the year — and some fields exist only in some eras.</p></div>
+      <div class="card"><div class="icon">🕳️</div><h4>Hidden structure</h4><p>Headers buried under title rows, decoy summary sheets, duplicate rows, numbers stored as text, and files with corrupt internals.</p></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ CHAPTER 2 ═══════════════ -->
+  <section id="ch2">
+    <div class="ch-label">Chapter 2</div>
+    <h3>Discovery &amp; analysis: measure the mess first</h3>
+    <p class="prose">Before proposing anything, the landscape was inventoried system by system: every file walked, every sheet listed, every filename parsed for its reporting period. The output — a <strong>bronze file-metadata table</strong> — became the backbone of everything that followed: sheet selection, header detection, and the column-mapping exercise all hang off this inventory.</p>
+
+    <div class="demo">
+      <div class="demo-head">
+        <h4>Scan the landscape</h4>
+        <span class="tag">Live demo · synthetic data</span>
+        <div class="demo-controls"><button class="btn btn-primary" id="scan-btn">▶ Run inventory scan</button></div>
+      </div>
+      <div class="ticker" id="scan-ticker">Presses ▶ to walk all 8 system folders, parse each filename's period, and inventory every sheet.</div>
+      <div class="counter-row">
+        <div class="counter"><div class="val" id="c-files">0</div><div class="lbl">files scanned</div></div>
+        <div class="counter"><div class="val" id="c-sheets">0</div><div class="lbl">sheets found</div></div>
+        <div class="counter"><div class="val" id="c-data">0</div><div class="lbl">data sheets</div></div>
+        <div class="counter"><div class="val" id="c-mb">0</div><div class="lbl">MB inventoried</div></div>
+        <div class="counter"><div class="val" id="c-corrupt">0</div><div class="lbl">corrupt flagged</div></div>
+        <div class="counter"><div class="val" id="c-noperiod">0</div><div class="lbl">period unresolved</div></div>
+      </div>
+      <div class="sysbars" id="sysbars"></div>
+    </div>
+
+    <p class="prose">The discovery write-up also fixed the <strong>ten processing concerns</strong> any solution had to answer — from folder-level reading order to audit trails — each captured as an issue → requirement pair with the business:</p>
+    <div class="cards">
+      <div class="card"><div class="icon">🗂️</div><h4>1–4 · Read &amp; record</h4><p>System-level folder reading · yearly/monthly file processing · sheet selection within files · metadata collection.</p></div>
+      <div class="card"><div class="icon">🧭</div><h4>5–7 · Standardise &amp; check</h4><p>Column-name standardisation (mapping layer) · column data-quality checks · completeness and consistency validation.</p></div>
+      <div class="card"><div class="icon">🧾</div><h4>8–10 · Trust &amp; evolve</h4><p>Error handling and tracking · an audit trail for every step · modularity so new systems and formats can join later.</p></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ CHAPTER 3 ═══════════════ -->
+  <section id="ch3">
+    <div class="ch-label">Chapter 3</div>
+    <h3>The proposal: a framework, not a script</h3>
+    <p class="prose">The findings went back to stakeholders as a <strong>formal research proposal</strong>: treat this as a schema-drift problem and build a reusable ingestion framework on the medallion architecture — not a one-off load. The proposal set the rules the business signed off on <em>before</em> heavy engineering started.</p>
+
+    <div class="medallion">
+      <div class="med bronze"><h4>🥉 Bronze — preserve</h4><p>Every sheet lands as-is, with full lineage metadata (system, file, sheet, period). Nothing is dropped — even duplicates are preserved here, so no data is ever lost.</p></div>
+      <div class="med silver"><h4>🥈 Silver — conform</h4><p>Mappings apply the conformed dictionary: canonical column names, typed values, quality rules logged, duplicates resolved by deterministic rules.</p></div>
+      <div class="med gold"><h4>🥇 Gold — serve</h4><p>Governed, query-ready Delta tables per system domain — the layer risk and reporting actually consume.</p></div>
+    </div>
+    <p class="note">That's how the proposal framed it. As built, the pipeline was leaner: <strong>incremental batches land directly in the gold catalog</strong> — as-is landing tables and conformed tables side by side, keeping the preserve/conform/serve roles without separate physical layers. The as-built architecture is in chapter 5.</p>
+
+    <p class="prose"><strong>Deterministic duplicate handling</strong> — agreed up front so no engineer ever makes a silent judgement call:</p>
+    <div class="cards">
+      <div class="card"><div class="icon">🗑️</div><h4>Drop</h4><p>Exact duplicate columns with identical data — keep one, log the drop.</p></div>
+      <div class="card"><div class="icon">🔀</div><h4>Merge</h4><p>Same field split across variants — coalesce into the canonical column.</p></div>
+      <div class="card"><div class="icon">🏷️</div><h4>Prefix</h4><p>Same name, genuinely different data — keep both with deterministic prefixes, flagged for a business decision.</p></div>
+      <div class="card"><div class="icon">🚧</div><h4>Quarantine</h4><p>High-risk conflicts on critical fields hold the whole file/sheet for review, logged — a value is never silently chosen.</p></div>
+    </div>
+
+    <p class="prose">The plan was phased with dated milestones and explicit deliverables — and tracked against them publicly with the stakeholders:</p>
+    <div class="timeline">
+      <div class="tl-item"><span class="when">Weeks 1–2</span><h5>Setup &amp; discovery</h5><p>Workspace, repo, ADLS mount; file inventory; first header-detection report.</p></div>
+      <div class="tl-item"><span class="when">Weeks 3–4</span><h5>Mapping &amp; canonicalisation</h5><p>Draft conformed schema; business SME sessions to confirm mappings system by system.</p></div>
+      <div class="tl-item"><span class="when">Weeks 5–9</span><h5>Bronze &amp; Silver</h5><p>Ingestion jobs with lineage metadata; mappings + typing + data-quality logs.</p></div>
+      <div class="tl-item"><span class="when">Weeks 10–13</span><h5>Drift engine, backfill &amp; QA</h5><p>Automated drift logging and alerts; full historic backfill; reconciliation of row counts.</p></div>
+      <div class="tl-item"><span class="when">Weeks 14–16</span><h5>Documentation &amp; handover</h5><p>Runbook, mapping change playbook, and training — the framework outlives the project.</p></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ CHAPTER 4 ═══════════════ -->
+  <section id="ch4">
+    <div class="ch-label">Chapter 4</div>
+    <h3>Stakeholder loops: where the data got its meaning</h3>
+    <p class="prose">Two decisions could not be automated: <strong>which sheet in each workbook is the data</strong>, and <strong>what each column actually means</strong>. Both belonged to the business. The engineering answer was to make their input cheap: automated detection did 95% of the work, then purpose-built guides walked stakeholders through confirming the rest — with review sessions to close each loop.</p>
+
+    <div class="demo">
+      <div class="demo-head">
+        <h4>Find the header</h4>
+        <span class="tag">Live demo · synthetic data</span>
+        <div class="demo-controls">
+          <select id="hh-select"></select>
+          <button class="btn btn-primary" id="hh-btn">▶ Detect header</button>
+        </div>
+      </div>
+      <p class="prose" style="font-size:0.85rem">Real sheets rarely start with the header. A scoring pass rates every candidate row — null ratio, text ratio, keyword hits, uniqueness, whether the <em>next</em> row looks numeric — and skips traps like title rows and numeric-heavy data rows. Corrupt files first go through a recovery cascade.</p>
+      <div class="rowlog" id="hh-log">Pick a sheet and press ▶.</div>
+      <div class="grid-wrap"><table class="sheet" id="hh-grid"></table></div>
+    </div>
+
+    <div class="quote">“Since different source data files have different column names, a standard column name is required for each… we have provided a logical method to handle this.” — from the guideline written for stakeholders filling the column matrix</div>
+
+    <div class="demo">
+      <div class="demo-head">
+        <h4>The column matrix stakeholders filled</h4>
+        <span class="tag">Live demo · synthetic data</span>
+        <div class="demo-controls">
+          <select id="mx-select"></select>
+          <button class="btn btn-primary" id="mx-btn">▶ Build matrix</button>
+        </div>
+      </div>
+      <p class="prose" style="font-size:0.85rem">One report per system (Cards produces two — CB and IB). Every column ever seen is partially standardised, plotted 1/blank against every month, counted, and sorted by coverage — with a <span class="mono">TOTAL_COUNT</span> summary row at the bottom. The last three columns ship <strong>empty on purpose</strong>: <strong>Required</strong>, <strong>Final Field Name</strong>, and <strong>Data Type</strong> are what the business fills in — that returned matrix <em>is</em> the conformed dictionary's source of truth.</p>
+      <label style="font-size:0.78rem;color:#8b949e;display:flex;align-items:center;gap:6px;margin:8px 0"><input type="checkbox" id="mx-filled"> show as returned by the business (Required / Final Field Name / Data Type filled)</label>
+      <div class="era-strip" id="mx-era"></div>
+      <div class="matrix-wrap"><table class="matrix" id="mx-table"></table></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ CHAPTER 5 ═══════════════ -->
+  <section id="ch5">
+    <div class="ch-label">Chapter 5</div>
+    <h3>Unify &amp; ingest: incremental batches, directly into gold</h3>
+    <p class="prose">The as-built architecture is deliberately lean: <strong>incremental batches land directly in the gold catalog</strong> — no separate bronze or silver stores. An orchestration pipeline copies each system's files year by year into the lake; a <strong>control table</strong> carries one row per file/sheet (which sheet, the zero-based header row, the target table, the source system, an <em>active</em> flag); and loader jobs process every active row, landing each sheet <strong>as-is into its own gold table</strong>. Re-runs are safe: a load overwrites exactly its own table, so any batch can be replayed from its control rows.</p>
+
+    <div class="arch">
+      <div class="abox"><b>Source file server</b>Years of monthly Excel/CSV exports, 8 systems</div>
+      <div class="aarr">→</div>
+      <div class="abox"><b>Orchestrated copy</b>Batch pipeline copies system / year folders to the data lake</div>
+      <div class="aarr">→</div>
+      <div class="abox"><b>Staged volumes</b>Files addressable by the platform, path per system</div>
+      <div class="aarr">→</div>
+      <div class="abox ctl"><b>Control tables</b>One row per file/sheet + year-batch driver — the machine-readable requirements</div>
+      <div class="aarr">→</div>
+      <div class="abox"><b>Loader jobs</b>CSV + Excel notebooks, parameterised by system / filetype / batch filter</div>
+      <div class="aarr">→</div>
+      <div class="abox gold"><b>Gold catalog — as-is tables</b>One table per sheet · all columns landed as strings + load timestamp · overwrite = idempotent</div>
+      <div class="aarr">→</div>
+      <div class="abox gold"><b>Gold catalog — conformed tables</b>Dictionary applied: canonical names, types, duplicate rules → <b style="display:inline">one conformed table per system</b> + lineage columns (system · year · month · ingestion time); new files appended incrementally</div>
+    </div>
+
+    <p class="prose">It took <strong>two solutions</strong> to get there. The first solution worked — its runbook and solution document are real deliverables of this project — but it treated <em>every file as a small manual project</em>:</p>
+    <div class="vs">
+      <div class="vbox v1"><h4>First solution — the manual way, per file</h4>
+        <ul>
+          <li><strong>1 · Prepare by hand</strong> — re-export as CSV UTF-8 or clean the workbook: delete unrelated sheets, remove every row above the header, fix duplicate column names, strip forced-text apostrophes</li>
+          <li><strong>2 · Stage</strong> — place the file in the agreed volumes path, note the exact full path</li>
+          <li><strong>3 · Register</strong> — hand-write one SQL INSERT into the control table: path, sheet name, header row, target table, source system…</li>
+          <li><strong>4 · Trigger</strong> — run the loader job (or wait for the schedule)</li>
+          <li><strong>5 · Verify</strong> — compare source row count vs table row count, spot-check values</li>
+          <li>The file had to <strong>fit the loader</strong>: header in the first row, nothing above it, unique clean names. Fine for a handful of loads — <strong>× 535 sheets it doesn't scale</strong></li>
+        </ul>
+      </div>
+      <div class="vbox v2"><h4>Final solution — the loader fits the files</h4>
+        <ul>
+          <li><strong>Inventory notebook</strong> walks every folder: period from the filename, sheets per workbook, corrupt-file recovery — zero per-file effort</li>
+          <li><strong>Header detection</strong> scores candidate rows — nobody deletes title rows by hand; the detected row becomes control metadata</li>
+          <li><strong>Control rows generated automatically</strong> from that metadata — no hand-written INSERTs</li>
+          <li><strong>Column matrix</strong> exposes drift and collects the business mapping (chapter 4)</li>
+          <li>Files load <strong>as they are</strong> — batches roll system by system, year by year</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="prose" style="font-size:0.88rem">Inside the loader, every sheet gets the same treatment: Excel XML escapes decoded, forced-text apostrophes stripped, cells read as strings so <strong>leading zeros survive</strong>, column names normalised (lowercase, underscores, digit-leading names prefixed, duplicates suffixed <span class="mono">_1, _2</span>), a load timestamp added — and the result lands with <strong>every column as string</strong>, so nothing is ever silently coerced at landing. Typing happens later, in the conformed layer, where the dictionary says what each field really is.</p>
+    <p class="prose" style="font-size:0.85rem">The control table, recreated with synthetic rows — this is where chapter 4's outputs (selected sheets, detected header rows) become machine instructions:</p>
+    <div class="dict-wrap" style="max-height:280px"><table class="dict" id="ctl-table"></table></div>
+
+    <div class="demo">
+      <div class="demo-head">
+        <h4>Run the pipeline</h4>
+        <span class="tag">Live demo · synthetic data</span>
+        <div class="demo-controls"><button class="btn btn-primary" id="pl-btn">▶ Run end-to-end</button></div>
+      </div>
+      <div class="funnel" id="funnel"></div>
+      <div class="ticker" id="pl-ticker">The funnel replays the full flow on the sample universe.</div>
+    </div>
+
+    <p class="prose">Standardisation currently runs as a <strong>dedicated notebook</strong>: it applies the dictionary to the as-is tables and builds <strong>one conformed table per system</strong>, stamped with lineage metadata — source system, year, month, source file, ingestion time and more. Newly arriving files are picked up incrementally and appended, so the history keeps growing without reloading — and the roadmap folds the whole flow into a single unified, cleansed pipeline.</p>
+    <p class="prose">The conformed data dictionary — every canonical field with the raw variants it absorbs (excerpt):</p>
+    <div class="dict-wrap"><table class="dict" id="dict-table"></table></div>
+  </section>
+
+  <!-- ═══════════════ CHAPTER 6 ═══════════════ -->
+  <section id="ch6">
+    <div class="ch-label">Chapter 6</div>
+    <h3>Outcome &amp; handover</h3>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="val">535</div><div class="lbl">sheets standardised</div></div>
+      <div class="stat-card"><div class="val">41+ GB</div><div class="lbl">history loaded</div></div>
+      <div class="stat-card"><div class="val">~2 hrs</div><div class="lbl">full automated run</div></div>
+      <div class="stat-card"><div class="val">8</div><div class="lbl">systems conformed</div></div>
+    </div>
+    <div class="cards">
+      <div class="card"><div class="icon">⚙️</div><h4>A framework, delivered</h4><p>Generic ingestion + standardisation pipeline in Databricks (PySpark) — new systems join by adding mappings, not code.</p></div>
+      <div class="card"><div class="icon">📖</div><h4>A dictionary with owners</h4><p>Conformed data dictionary and column-mapping framework, built with and signed off by the business.</p></div>
+      <div class="card"><div class="icon">🛡️</div><h4>Enforced standards</h4><p>SQL validation rules and automated checks guard the layers; anomalies are logged, never silently fixed.</p></div>
+      <div class="card"><div class="icon">🤝</div><h4>A process that transfers</h4><p>Runbook, guides, and review cadence handed over — the stakeholder loop keeps working without its author.</p></div>
+    </div>
+    <p class="prose">The lasting result isn't the loaded history — it's that <strong>the next 535 sheets won't be a project</strong>. The framework, the dictionary, and the stakeholder process turned a one-off rescue into a repeatable capability.</p>
+  </section>
+
+</main>
+
+<footer>
+  Hamdan Alkhoori · System Analyst — Data Platforms, RAKBANK (2025–2026)<br>
+  All data on this page is fully synthetic — generated by <a href="https://github.com/Halkhoori2000/Historic-Data-Loading/blob/main/tools/generate_sample_data.py">tools/generate_sample_data.py</a>.
+</footer>
+
+<script src="sample-data/universe.js"></script>
+<script>
+(function(){
+  "use strict";
+  const U = window.HDL_UNIVERSE;
+  if (!U) { document.getElementById("chaos-list").textContent = "sample-data/universe.js failed to load"; return; }
+  const $ = id => document.getElementById(id);
+  const fmt = n => n.toLocaleString("en-US");
+  const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  // ── hero + chapter 1 ──
+  $("s-files").textContent = fmt(U.meta.totals.files);
+  $("s-sheets").textContent = fmt(U.meta.totals.dataSheets);
+  $("s-corrupt").textContent = U.meta.totals.corruptFiles;
+
+  (function chaos(){
+    const picks = [3, 61, 88, 140, 171, 214, 258, 300, 342, 401, 445, 470]
+      .map(i => U.files[i % U.files.length]);
+    $("chaos-list").innerHTML = picks.map(f =>
+      `<div><span class="dir">${U.systems[f.sys].name}/${f.y}/</span>${esc(f.name)}${f.corrupt ? ' <span style="color:#f85149">⚠ ' + esc(f.corrupt) + "</span>" : ""}</div>`
+    ).join("");
+  })();
+
+  function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+  // ── period extraction (mirrors the real pipeline's behaviour) ──
+  const MONMAP = {}; MON.forEach((m,i)=>MONMAP[m.toLowerCase()]=i+1);
+  function extractPeriod(name){
+    const n = name.toLowerCase();
+    let m;
+    if ((m = n.match(/(\d{1,2})[.\/-](\d{1,2})[.\/-](20\d{2})/))) return {y:+m[3], m:+m[2]};
+    if ((m = n.match(/(20\d{2})[._-](0[1-9]|1[0-2])/)))          return {y:+m[1], m:+m[2]};
+    if ((m = n.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*['’]\s*(\d{2})/))) return {y:2000+ +m[2], m:MONMAP[m[1]]};
+    if ((m = n.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s\-_]*(20\d{2})/))) return {y:+m[2], m:MONMAP[m[1]]};
+    if ((m = n.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s\-_]+(\d{2})(?!\d)/))) return {y:2000+ +m[2], m:MONMAP[m[1]]};
+    if ((m = n.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)(\d{2})(?!\d)/)))          return {y:2000+ +m[2], m:MONMAP[m[1]]};
+    return null;
+  }
+
+  // ── demo 1: inventory scan ──
+  (function demo1(){
+    const bars = {};
+    const wrap = $("sysbars");
+    U.systems.forEach((s,si)=>{
+      const total = U.files.filter(f=>f.sys===si).length;
+      const row = document.createElement("div");
+      row.className = "sysbar";
+      row.innerHTML = `<div class="nm">${esc(s.name)}</div><div class="track"><div class="fill"></div></div><div class="ct">0 / ${total}</div>`;
+      wrap.appendChild(row);
+      bars[si] = { fill: row.querySelector(".fill"), ct: row.querySelector(".ct"), total, done: 0 };
+    });
+    let running = false;
+    $("scan-btn").onclick = () => {
+      if (running) return; running = true;
+      $("scan-btn").disabled = true;
+      Object.values(bars).forEach(b=>{ b.done=0; b.fill.style.width="0%"; b.ct.textContent=`0 / ${b.total}`; });
+      const order = U.files.map((_,i)=>i);
+      let i = 0, sheets = 0, data = 0, mb = 0, corrupt = 0, noperiod = 0;
+      const t0 = performance.now();
+      (function step(){
+        const batch = Math.min(order.length - i, 7);
+        for (let k = 0; k < batch; k++, i++) {
+          const f = U.files[order[i]];
+          sheets += f.sheets.length;
+          data += f.sheets.filter(s=>s.data).length;
+          mb += f.sizeMB;
+          if (f.corrupt) corrupt++;
+          const p = extractPeriod(f.name);
+          if (!p) noperiod++;
+          const b = bars[f.sys]; b.done++;
+          b.fill.style.width = (100*b.done/b.total)+"%";
+          b.ct.textContent = `${b.done} / ${b.total}`;
+          if (k === batch-1) {
+            const ptxt = p ? `<span class="ok">→ ${MON[p.m-1]} ${p.y}</span>` : `<span class="warn">→ period?</span>`;
+            $("scan-ticker").innerHTML = `${esc(U.systems[f.sys].name)}/${f.y}/<strong>${esc(f.name)}</strong> ${ptxt}${f.corrupt?` <span class="warn">⚠ ${esc(f.corrupt)}</span>`:""}`;
+          }
+        }
+        $("c-files").textContent = fmt(i);
+        $("c-sheets").textContent = fmt(sheets);
+        $("c-data").textContent = fmt(data);
+        $("c-mb").textContent = fmt(Math.round(mb));
+        $("c-corrupt").textContent = corrupt;
+        $("c-noperiod").textContent = noperiod;
+        if (i < order.length) requestAnimationFrame(step);
+        else {
+          const secs = ((performance.now()-t0)/1000).toFixed(1);
+          $("scan-ticker").innerHTML = `<span class="ok">✓ Inventory complete in ${secs}s</span> — ${fmt(i)} files · ${fmt(data)} data sheets across ${U.systems.length} systems · ${corrupt} corrupt files queued for recovery · every period resolved from the filename alone`;
+          $("scan-btn").disabled = false; running = false;
+        }
+      })();
+    };
+  })();
+
+  // ── demo 2: header hunt ──
+  (function demo2(){
+    const sel = $("hh-select");
+    const keys = Object.keys(U.deepSamples);
+    keys.forEach(k=>{
+      const d = U.deepSamples[k], f = U.files[d.fileIndex];
+      const o = document.createElement("option");
+      o.value = k;
+      o.textContent = `${U.systems[f.sys].name} — ${f.name} · ${d.sheet}${f.corrupt ? " ⚠" : ""}`;
+      sel.appendChild(o);
+    });
+    function renderGrid(grid, cls){
+      const t = $("hh-grid");
+      t.innerHTML = grid.slice(0, 16).map((row,ri)=>
+        `<tr data-ri="${ri}">${row.slice(0, 12).map(c=>`<td>${c===null?"":esc(c)}</td>`).join("")}</tr>`
+      ).join("");
+    }
+    const KEYWORDS = ["id","name","date","amount","code","price","qty","total","fee","income","interest","status","os"];
+    function scoreRow(row, next){
+      const vals = row.filter(c=>c!==null && c!=="");
+      if (!vals.length) return {skip:"empty row"};
+      const strs = vals.map(String);
+      if (new Set(strs.map(s=>s.toLowerCase())).size===1 && vals.length>2) return {skip:"repeated-value row"};
+      const numeric = strs.filter(s=>!isNaN(parseFloat(String(s).replace(/,/g,"")))&&isFinite(String(s).replace(/,/g,""))).length;
+      if (numeric/vals.length > 0.7) return {skip:"numeric-heavy (data row)"};
+      const textCells = strs.filter(s=>isNaN(parseFloat(s)) && s.trim().length>1).length;
+      if (textCells < 2) return {skip:"too few text cells"};
+      let score = 0, why = [];
+      if (vals.length/row.length > 0.6) { score+=2; why.push("dense +2"); }
+      const strRatio = strs.filter(s=>isNaN(parseFloat(s))).length/row.length;
+      if (strRatio > 0.6) { score+=2; why.push("texty +2"); }
+      if (strs.reduce((a,s)=>a+s.length,0)/vals.length < 20) { score+=1; why.push("short labels +1"); }
+      if (strs.some(s=>KEYWORDS.some(k=>s.toLowerCase().includes(k)))) { score+=2; why.push("keywords +2"); }
+      if (new Set(strs).size===strs.length) { score+=1; why.push("all unique +1"); }
+      if (next) {
+        const nvals = next.filter(c=>c!==null&&c!=="").map(String);
+        const nnum = nvals.filter(s=>!isNaN(parseFloat(String(s).replace(/,/g,"")))).length;
+        if (nnum > next.length*0.3) { score+=3; why.push("next row numeric +3"); }
+      }
+      return {score, why};
+    }
+    let running = false;
+    $("hh-btn").onclick = async () => {
+      if (running) return; running = true; $("hh-btn").disabled = true;
+      const d = U.deepSamples[sel.value], f = U.files[d.fileIndex];
+      const log = $("hh-log"); log.innerHTML = "";
+      const put = h => { log.innerHTML += h + "<br>"; log.scrollTop = log.scrollHeight; };
+      const pause = ms => new Promise(r=>setTimeout(r,ms));
+      if (f.corrupt) {
+        put(`<span class="bad">✗ normal read failed — ${esc(f.corrupt)}</span>`); await pause(550);
+        if (f.corrupt.indexOf("styles") >= 0) { put(`<span class="info">→ retry with styles.xml stripped…</span>`); await pause(550); }
+        else if (f.corrupt.indexOf("garbled") >= 0) { put(`<span class="info">→ raw workbook.xml parse, cleaning sheet names…</span>`); await pause(550); }
+        else { put(`<span class="info">→ falling back to alternate xlsb reader…</span>`); await pause(550); }
+        put(`<span class="good">✓ recovered — grid extracted</span>`); await pause(350);
+      }
+      renderGrid(d.grid);
+      await pause(300);
+      const rows = [...$("hh-grid").rows];
+      let best = {score:-1, idx:-1};
+      for (let ri = 0; ri < Math.min(d.grid.length, 16); ri++) {
+        rows.forEach(r=>r.classList.remove("scanning"));
+        rows[ri] && rows[ri].classList.add("scanning");
+        const res = scoreRow(d.grid[ri], d.grid[ri+1]);
+        if (res.skip) { put(`row ${ri+1}: <span class="bad">skip — ${res.skip}</span>`); rows[ri] && rows[ri].classList.add("rejected"); }
+        else {
+          put(`row ${ri+1}: score <strong>${res.score}</strong> <span class="info">(${res.why.join(", ")})</span>`);
+          if (res.score > best.score) best = {score:res.score, idx:ri};
+        }
+        await pause(240);
+        if (res.score !== undefined && res.score >= 8 && ri >= (f.sheets[0].headerRow-1)) break;
+      }
+      rows.forEach(r=>r.classList.remove("scanning"));
+      if (best.idx >= 0) {
+        rows[best.idx].classList.add("winner");
+        const cols = d.grid[best.idx].filter(c=>c!==null);
+        put(`<span class="good">✓ header = row ${best.idx+1} (score ${best.score}) — ${cols.length} columns captured:</span> <span class="info">${esc(cols.slice(0,6).join(" | "))}${cols.length>6?" | …":""}</span>`);
+      } else put(`<span class="bad">no header found — flagged for manual review</span>`);
+      $("hh-btn").disabled = false; running = false;
+    };
+    renderGrid(U.deepSamples[keys[0]].grid);
+  })();
+
+  // ── demo 3: column presence matrix — mirrors the report generator's exact output shape ──
+  (function demo3(){
+    const sel = $("mx-select");
+    const CB = ["cb","conv"], IB = ["ib","islamic"];
+    U.systems.forEach((s,si)=>{
+      if (s.dual) {   // Cards → two reports, CB and IB (as the code produces)
+        ["CB","IB"].forEach(part=>{
+          const o = document.createElement("option");
+          o.value = si + "|" + part; o.textContent = s.name + " — " + part; sel.appendChild(o);
+        });
+      } else {
+        const o = document.createElement("option"); o.value = String(si); o.textContent = s.name; sel.appendChild(o);
+      }
+    });
+    // partial standardisation, same sequence as the report code:
+    // lower/trim → whitespace&hyphens→_ → other punctuation→_ → collapse _ → strip _ → drop leftovers
+    function partialStd(c){
+      let col = String(c).toLowerCase().trim();
+      col = col.replace(/[\s\-]+/g, "_");
+      col = col.replace(/[^\w\s-]/g, "_");
+      col = col.replace(/_+/g, "_");
+      col = col.replace(/^_+|_+$/g, "");
+      col = col.replace(/[^\w]/g, "");
+      return col;
+    }
+    const v2canon = {};
+    U.dictionary.forEach(e=>e.variants.forEach(v=>{ v2canon[partialStd(v)] = e; }));
+    function build(val){
+      const [siStr, part] = String(val).split("|");
+      const si = +siStr;
+      const files = U.files.filter(f=>f.sys===si);
+      const wantSheet = s => {
+        if (!part) return s.data;
+        const n = s.name.toLowerCase();
+        return s.data && (part==="CB" ? CB.some(v=>n.includes(v)) && !IB.some(v=>n.includes(v))
+                                      : IB.some(v=>n.includes(v)));
+      };
+      const monthsSet = new Map();
+      const pres = new Map();   // std -> {originals:Set, months:Set}
+      files.forEach(f=>f.sheets.forEach(s=>{
+        if (!wantSheet(s)) return;
+        monthsSet.set(f.y*100+f.m, {y:f.y, m:f.m});
+        s.cols.forEach(c=>{
+          const k = partialStd(c);
+          if (!pres.has(k)) pres.set(k, {originals:new Set(), months:new Set()});
+          const e = pres.get(k);
+          e.originals.add(c);
+          e.months.add(f.y*100+f.m);
+        });
+      }));
+      const months = [...monthsSet.values()].sort((a,b)=>(a.y*100+a.m)-(b.y*100+b.m));
+      const rows = [...pres.entries()].sort((a,b)=>b[1].months.size - a[1].months.size);
+      const filled = $("mx-filled").checked;
+      let h = `<tr><th style="text-align:left">Original Column Name</th><th style="text-align:left">Partially Standardized</th>${months.map(mo=>`<th>${MON[mo.m-1]}-${String(mo.y).slice(2)}</th>`).join("")}<th>Count</th><th>Required</th><th>Final Field Name</th><th>Data Type</th></tr>`;
+      rows.forEach(([k,e])=>{
+        const dict = filled ? v2canon[k] : null;
+        const origs = [...e.originals];
+        const origTxt = origs.slice(0,5).join(", ") + (origs.length>5 ? "..." : "");
+        h += `<tr><td class="colname" title="${esc(origTxt)}">${esc(origTxt)}</td><td class="colname" style="left:auto;position:static">${esc(k)}</td>`;
+        months.forEach(mo=>{
+          const on = e.months.has(mo.y*100+mo.m);
+          h += `<td class="${on?"on":""}">${on?"1":""}</td>`;
+        });
+        h += `<td class="count">${e.months.size}</td>`;
+        h += `<td class="dict">${dict && dict.required ? "Y" : ""}</td>`;
+        h += `<td class="dict">${dict ? esc(dict.canonical) : ""}</td>`;
+        h += `<td class="dict">${dict ? esc(dict.dtype) : ""}</td></tr>`;
+      });
+      // TOTAL_COUNT summary row, as the report appends
+      h += `<tr><td class="colname" style="color:#f0883e;font-weight:700">TOTAL_COUNT</td><td></td>` +
+           months.map(mo=>{
+             const t = rows.reduce((a,[,e])=>a+(e.months.has(mo.y*100+mo.m)?1:0),0);
+             return `<td class="count">${t}</td>`;
+           }).join("") + `<td></td><td></td><td></td><td></td></tr>`;
+      $("mx-table").innerHTML = h;
+      const sys = U.systems[si];
+      const alias = U.dictionary.find(d=>d.canonical==="account_number");
+      $("mx-era").innerHTML = `<span style="color:#8b949e;font-family:inherit">Drift example:</span> ` +
+        alias.variants.map(v=>`<span class="era-chip">${esc(v)}</span>`).join(`<span class="era-arrow">→</span>`) +
+        `<span style="color:#8b949e"> · ${rows.length} unique standardised columns · ${months.length} month-files · ${sys.name}${part?" "+part:""}</span>`;
+    }
+    $("mx-btn").onclick = () => build(sel.value);
+    $("mx-filled").onchange = () => build(sel.value);
+    build("0");
+  })();
+
+  // ── demo 4: pipeline funnel ──
+  (function demo4(){
+    const T = U.meta.totals;
+    let dup = 0, totalRows = 0, textNums = 0, mixedDates = 0, trimRows = 0, rawCols = new Set();
+    U.files.forEach(f=>f.sheets.forEach(s=>{
+      if (!s.data) return;
+      totalRows += s.rows;
+      dup += s.dirt.dupRows;
+      if (s.dirt.numAsText) textNums++;
+      if (s.dirt.mixedDates) mixedDates++;
+      if (s.dirt.totalRow) trimRows++;
+      s.cols.forEach(c=>rawCols.add(String(c).toLowerCase().trim().replace(/[^\w]+/g,"_")));
+    }));
+    const canon = U.dictionary.length;
+    const csvSheets = U.files.filter(f=>f.name.endsWith(".csv")).reduce((a,f)=>a+f.sheets.filter(s=>s.data).length,0);
+    const xlSheets = T.dataSheets - csvSheets;
+    const stages = [
+      { nm: "Copy batches to lake",    out: () => `<span class="em">${fmt(T.files)}</span> files, system by system, year by year (~${fmt(Math.round(T.sizeMB))} MB)` },
+      { nm: "Register control rows",   out: () => `<span class="em">${fmt(T.dataSheets)}</span> rows — sheet name + zero-based header row + target table, active = 1` },
+      { nm: "Run loader jobs",         out: () => `parameterised by system × filetype — Excel: <span class="em">${fmt(xlSheets)}</span> sheets · CSV: <span class="em">${fmt(csvSheets)}</span> files` },
+      { nm: "Recover corrupt",         out: () => `<span class="em">${T.corruptFiles}</span> files recovered via fallback cascade` },
+      { nm: "Clean & normalise",       out: () => `escapes decoded · apostrophes stripped · leading zeros kept · names lowercased, deduped (<span class="em">_1, _2</span>)` },
+      { nm: "Land in gold — as-is",    out: () => `<span class="em">${fmt(T.dataSheets)}</span> tables, one per sheet · <span class="em">${fmt(totalRows)}</span> rows · all strings + load_ts · overwrite = idempotent` },
+      { nm: "Verify row counts",       out: () => `source rows (minus header) = table rows for <span class="em">${fmt(T.dataSheets)}/${fmt(T.dataSheets)}</span> loads · empty sheets logged SKIPPED` },
+      { nm: "Conform via dictionary",  out: () => `dedicated notebook: <span class="em">${fmt(rawCols.size)}</span> raw names → <span class="em">${canon}</span> canonical fields · typed · ${fmt(dup)} duplicate rows resolved · ${fmt(trimRows)} TOTAL rows trimmed` },
+      { nm: "Per-system gold tables",  out: () => `<span class="em">${U.systems.length}</span> conformed tables + lineage columns (system · year · month · ingested at) — new files append incrementally` },
+    ];
+    const wrap = $("funnel");
+    wrap.innerHTML = stages.map(s=>`<div class="fstage waiting"><div class="nm">${s.nm}</div><div class="track"><div class="fill"></div></div><div class="out"></div></div>`).join("");
+    const rows = [...wrap.children];
+    let running = false;
+    $("pl-btn").onclick = async () => {
+      if (running) return; running = true; $("pl-btn").disabled = true;
+      rows.forEach(r=>{ r.classList.add("waiting"); r.querySelector(".fill").style.width="0%"; r.querySelector(".out").innerHTML=""; });
+      const pause = ms => new Promise(r=>setTimeout(r,ms));
+      for (let i = 0; i < stages.length; i++) {
+        const r = rows[i];
+        r.classList.remove("waiting");
+        $("pl-ticker").textContent = "Stage " + (i+1) + "/" + stages.length + " — " + stages[i].nm + "…";
+        r.querySelector(".fill").style.width = "100%";
+        await pause(650);
+        r.querySelector(".out").innerHTML = stages[i].out();
+      }
+      $("pl-ticker").innerHTML = `<span class="ok">✓ Sample universe processed.</span> In production this exact flow ran as a <strong>~2-hour automated pipeline</strong> over 41+ GB — replacing extensive manual work.`;
+      $("pl-btn").disabled = false; running = false;
+    };
+  })();
+
+  // ── control table preview (synthetic recreation of the metadata-driven load) ──
+  (function ctl(){
+    const rows = [];
+    let id = 1;
+    U.files.forEach(f=>f.sheets.forEach(s=>{
+      if (!s.data) return;
+      rows.push({
+        id: id++,
+        filename: f.name,
+        sheetname: f.name.endsWith(".csv") ? "—" : s.name,
+        headerrow: s.headerRow - 1,
+        targettable: (U.systems[f.sys].id + "_" + MON[f.m-1] + "_" + f.y).toLowerCase(),
+        filetype: f.name.split(".").pop(),
+        sourcetype: U.systems[f.sys].name,
+        active: 1,
+      });
+    }));
+    const show = rows.filter((_,i)=>i % 61 === 0).slice(0, 9);
+    $("ctl-table").innerHTML =
+      `<tr><th>id</th><th>filename</th><th>sheetname</th><th>headerrow</th><th>targettable</th><th>filetype</th><th>sourcetype</th><th>active</th></tr>` +
+      show.map(r=>`<tr><td>${r.id}</td><td class="vars">${esc(r.filename)}</td><td>${esc(r.sheetname)}</td><td style="text-align:center">${r.headerrow}</td><td class="canon">${esc(r.targettable)}</td><td>${esc(r.filetype)}</td><td>${esc(r.sourcetype)}</td><td style="text-align:center;color:#3fb950">1</td></tr>`).join("") +
+      `<tr><td colspan="8" style="text-align:center;color:#484f58">… ${fmt(rows.length)} control rows in total — one per data sheet</td></tr>`;
+  })();
+
+  // ── data dictionary table ──
+  (function dict(){
+    const rows = U.dictionary
+      .slice()
+      .sort((a,b)=>(b.required?1:0)-(a.required?1:0) || a.canonical.localeCompare(b.canonical))
+      .slice(0, 28);
+    $("dict-table").innerHTML =
+      `<tr><th>Canonical field</th><th>Type</th><th>Required</th><th>Raw variants absorbed</th></tr>` +
+      rows.map(e=>`<tr><td class="canon">${esc(e.canonical)}</td><td>${esc(e.dtype)}</td><td class="req">${e.required?"✓":""}</td><td class="vars">${esc(e.variants.join("  ·  "))}</td></tr>`).join("");
+  })();
+
+})();
+</script>
+</body>
+</html>
