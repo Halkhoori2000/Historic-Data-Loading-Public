@@ -301,12 +301,12 @@
   <section id="ch5">
     <div class="ch-label">Chapter 5</div>
     <h3>Unify &amp; ingest: incremental batches, directly into gold</h3>
-    <p class="prose">The as-built architecture is deliberately lean: <strong>incremental batches land directly in the gold catalog</strong> — no separate bronze or silver stores. An ADF pipeline — itself driven by control tables (Lookup → ForEach → Copy) — copies each system's files year by year into the lake; a <strong>control table</strong> carries one row per file/sheet (which sheet, the zero-based header row, the target table, the source system, an <em>active</em> flag); and loader jobs process every active row, landing each sheet <strong>as-is into its own gold table</strong>. Re-runs are safe: a load overwrites exactly its own table, so any batch can be replayed from its control rows.</p>
+    <p class="prose">The as-built architecture is deliberately lean: <strong>incremental batches land directly in the gold catalog</strong> — no separate bronze or silver stores. An orchestration pipeline copies each system's files year by year into the lake; a <strong>control table</strong> carries one row per file/sheet (which sheet, the zero-based header row, the target table, the source system, an <em>active</em> flag); and loader jobs process every active row, landing each sheet <strong>as-is into its own gold table</strong>. Re-runs are safe: a load overwrites exactly its own table, so any batch can be replayed from its control rows.</p>
 
     <div class="arch">
       <div class="abox"><b>Source file server</b>Years of monthly Excel/CSV exports, 8 systems</div>
       <div class="aarr">→</div>
-      <div class="abox"><b>ADF copy pipeline</b>Control-table-driven (Lookup → ForEach → Copy): system / year folders to the data lake, on schedule or trigger</div>
+      <div class="abox"><b>Orchestrated copy</b>Batch pipeline copies system / year folders to the data lake</div>
       <div class="aarr">→</div>
       <div class="abox"><b>Staged volumes</b>Files addressable by the platform, path per system</div>
       <div class="aarr">→</div>
@@ -359,17 +359,6 @@
     </div>
 
     <p class="prose">Standardisation currently runs as a <strong>dedicated notebook</strong>: it applies the dictionary to the as-is tables and builds <strong>one conformed table per system</strong>, stamped with lineage metadata — source system, year, month, source file, ingestion time and more. Newly arriving files are picked up incrementally and appended, so the history keeps growing without reloading — and the roadmap folds the whole flow into a single unified, cleansed pipeline.</p>
-
-    <div class="demo">
-      <div class="demo-head">
-        <h4>Steady state: a new month arrives</h4>
-        <span class="tag">Live demo · synthetic data</span>
-        <div class="demo-controls"><button class="btn btn-primary" id="nm-btn">▶ Month-end lands</button></div>
-      </div>
-      <p class="prose" style="font-size:0.85rem">The historic backfill was the project; this is the operating model it left behind. When the next month's exports land, <strong>no engineer writes anything</strong> — the same pipeline picks them up as an incremental, metadata-driven batch:</p>
-      <div class="rowlog" id="nm-log" style="max-height:240px">Press ▶ to simulate the next month-end.</div>
-      <div class="era-strip" id="nm-months"></div>
-    </div>
     <p class="prose">The conformed data dictionary — every canonical field with the raw variants it absorbs (excerpt):</p>
     <div class="dict-wrap"><table class="dict" id="dict-table"></table></div>
   </section>
@@ -678,7 +667,7 @@
     const csvSheets = U.files.filter(f=>f.name.endsWith(".csv")).reduce((a,f)=>a+f.sheets.filter(s=>s.data).length,0);
     const xlSheets = T.dataSheets - csvSheets;
     const stages = [
-      { nm: "ADF copies batches to lake", out: () => `<span class="em">${fmt(T.files)}</span> files, system by system, year by year (~${fmt(Math.round(T.sizeMB))} MB)` },
+      { nm: "Copy batches to lake",    out: () => `<span class="em">${fmt(T.files)}</span> files, system by system, year by year (~${fmt(Math.round(T.sizeMB))} MB)` },
       { nm: "Register control rows",   out: () => `<span class="em">${fmt(T.dataSheets)}</span> rows — sheet name + zero-based header row + target table, active = 1` },
       { nm: "Run loader jobs",         out: () => `parameterised by system × filetype — Excel: <span class="em">${fmt(xlSheets)}</span> sheets · CSV: <span class="em">${fmt(csvSheets)}</span> files` },
       { nm: "Recover corrupt",         out: () => `<span class="em">${T.corruptFiles}</span> files recovered via fallback cascade` },
@@ -731,43 +720,6 @@
       `<tr><th>id</th><th>filename</th><th>sheetname</th><th>headerrow</th><th>targettable</th><th>filetype</th><th>sourcetype</th><th>active</th></tr>` +
       show.map(r=>`<tr><td>${r.id}</td><td class="vars">${esc(r.filename)}</td><td>${esc(r.sheetname)}</td><td style="text-align:center">${r.headerrow}</td><td class="canon">${esc(r.targettable)}</td><td>${esc(r.filetype)}</td><td>${esc(r.sourcetype)}</td><td style="text-align:center;color:#3fb950">1</td></tr>`).join("") +
       `<tr><td colspan="8" style="text-align:center;color:#484f58">… ${fmt(rows.length)} control rows in total — one per data sheet</td></tr>`;
-  })();
-
-  // ── demo 5: steady state — a new month arrives ──
-  (function demo5(){
-    const sysMonths = U.systems.map((s,si)=>{
-      const set = new Set();
-      U.files.forEach(f=>{ if (f.sys===si) set.add(f.y*100+f.m); });
-      return set.size;
-    });
-    function renderMonths(bump){
-      $("nm-months").innerHTML = `<span style="color:#8b949e;font-family:inherit">Conformed history per system:</span> ` +
-        U.systems.map((s,si)=>`<span class="era-chip">${esc(s.name)} · ${sysMonths[si]}${bump?` <span style="color:#3fb950">→ ${sysMonths[si]+1} months</span>`:" months"}</span>`).join("");
-    }
-    const NEW_FILES = [
-      "OD Jul'23.xlsx", "LAI Jul'23.xlsx", "Mortgage Jul 2023.xlsx",
-      "Cards Jul 2023.xlsx  (CB + IB)", "Personal Loans Base Jul-23.xlsx",
-      "RAKFIN Jul'23.xlsx", "Auto Jul 2023.xlsx", "BBG Jul'23.xlsx", "WBG Jul'23.xlsx",
-    ];
-    let running = false;
-    $("nm-btn").onclick = async () => {
-      if (running) return; running = true; $("nm-btn").disabled = true;
-      const log = $("nm-log"); log.innerHTML = "";
-      const put = h => { log.innerHTML += h + "<br>"; log.scrollTop = log.scrollHeight; };
-      const pause = ms => new Promise(r=>setTimeout(r,ms));
-      renderMonths(false);
-      put(`<span class="info">▸ Month-end export — 9 new files on the source server; ADF trigger fires and copies them to the lake:</span>`); await pause(420);
-      for (const f of NEW_FILES) { put(`&nbsp;&nbsp;${esc(f)}`); await pause(140); }
-      await pause(300);
-      put(`<span class="info">▸ Inventory sweep</span> — periods parsed → <span class="good">Jul 2023</span> · 10 data sheets · headers detected · 0 corrupt`); await pause(650);
-      put(`<span class="info">▸ Control table</span> — <span class="good">+10 rows auto-registered</span> (sheet, header row, target table, active = 1)`); await pause(650);
-      put(`<span class="info">▸ Loader batch (Jul 2023)</span> — 10 as-is tables land in gold · 12,847 rows · reconciled <span class="good">10/10</span>`); await pause(650);
-      put(`<span class="info">▸ Conform notebook</span> — Jul 2023 appended to all 8 conformed system tables (+ lineage: system · 2023 · 07 · ingest time)`); await pause(650);
-      put(`<span class="good">✓ History grew by one month — no code written, no file touched by hand. Every question now includes Jul 2023.</span>`);
-      renderMonths(true);
-      $("nm-btn").disabled = false; running = false;
-    };
-    renderMonths(false);
   })();
 
   // ── data dictionary table ──
