@@ -158,7 +158,7 @@
 
   <div class="hero">
     <h2>535 messy Excel sheets → one governed lakehouse</h2>
-    <p>Years of monthly Excel exports from 8 core banking systems — inconsistent names, drifting schemas, buried headers, corrupt files — turned into a governed Delta lakehouse with a ~2-hour automated pipeline. This page walks through the delivery the way it really ran: not just the code, but the proposals, the stakeholder loops, and the guides that made the data trustworthy.</p>
+    <p>Years of monthly Excel exports from 8 core banking systems — inconsistent names, drifting schemas, buried headers, corrupt files — turned into a governed Delta lakehouse with an automated pipeline. This page walks through the delivery the way it really ran: not just the code, but the proposals, the stakeholder loops, and the guides that made the data trustworthy.</p>
     <div class="badge-row">
       <span class="badge">Databricks</span>
       <span class="badge">PySpark</span>
@@ -168,7 +168,6 @@
       <span class="stat-highlight">8 systems</span>
       <span class="stat-highlight">535 sheets</span>
       <span class="stat-highlight">41+ GB</span>
-      <span class="stat-highlight">~2-hour run</span>
     </div>
   </div>
 
@@ -693,7 +692,7 @@
         await pause(650);
         r.querySelector(".out").innerHTML = stages[i].out();
       }
-      $("pl-ticker").innerHTML = `<span class="ok">✓ Sample universe processed.</span> In production this exact flow ran as a <strong>~2-hour automated pipeline</strong> over 41+ GB — replacing extensive manual work.`;
+      $("pl-ticker").innerHTML = `<span class="ok">✓ Sample universe processed.</span> In production this exact flow ran as a <strong>~an automated pipeline</strong> over 41+ GB — replacing extensive manual work.`;
       $("pl-btn").disabled = false; running = false;
     };
   })();
